@@ -11,7 +11,7 @@ public class EQS : MonoBehaviour
     public int numRings = 3;
     public float radiusPerRing = 5;
     private List<EQSPoint> points = new List<EQSPoint>();
-    private IQueryStrategy distanceStrategy;
+    private IQueryStrategy strategy;
     private NavMeshAgent agent;
     public float maxQueryDistance = 50;
 
@@ -49,7 +49,8 @@ public class EQS : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
 
-        distanceStrategy = new DistanceQuery(gameObject, maxQueryDistance);
+        //strategy = new DistanceQuery(gameObject, maxQueryDistance);
+        strategy = new LineOfSightQuery(target);
         points = new List<EQSPoint>();
 
         float stepAngle = 360f / numPointsPerRing;
@@ -82,6 +83,27 @@ public class EQS : MonoBehaviour
         }
     }
 
+    public class LineOfSightQuery : IQueryStrategy
+    {
+        private GameObject target;
+        
+        public LineOfSightQuery(GameObject target)
+        {
+            this.target = target;
+        }
+
+        public float Query(Vector3 point)
+        {
+            Vector3 pos = point + new Vector3(0, 1.6f, 0);
+            Vector3 dir = target.transform.position - pos;
+            if(Physics.Raycast(pos, dir.normalized, out RaycastHit hit, 1000))
+            {
+                return hit.collider.gameObject == target.gameObject ? 1 : 0;
+            }
+            return 0;
+        }
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -93,7 +115,7 @@ public class EQS : MonoBehaviour
 
     public void UpdateTargetPosition()
     {
-        var bestPoint = QueryEnvironment(target.transform.position, numRings, numPointsPerRing, radiusPerRing, distanceStrategy);
+        var bestPoint = QueryEnvironment(target.transform.position, numRings, numPointsPerRing, radiusPerRing, strategy);
         if (bestPoint != null)
         {
             agent.SetDestination(bestPoint.point);
